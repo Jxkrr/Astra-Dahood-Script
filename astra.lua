@@ -100,4 +100,3 @@ Window:AddSlider("Aimbot Range", {min = 50, max = 200, default = 200}, function(
     AimbotRange = Value
 end)
 
-Library:Notification("Astra Da Hood Script", "Loaded Successfully", 5)
