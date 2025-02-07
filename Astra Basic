@@ -1,0 +1,268 @@
+-- Astra DaHood Script: Enhanced Gameplay Helper with GUI
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local camera = workspace.CurrentCamera
+
+local aimbotActive = false
+local aimlockActive = false
+local silentAimActive = false
+local antiStompActive = true
+local godmodeActive = false
+local infiniteStaminaActive = true
+local espActive = false
+local aimbotRange = 200
+
+local lockedTarget = nil
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AstraDaHoodGUI"
+screenGui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame")
+frame.Parent = screenGui
+frame.Size = UDim2.new(0, 300, 0, 450)
+frame.Position = UDim2.new(0, 50, 0, 50)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.2
+frame.Visible = true
+frame.Active = true
+frame.Draggable = true
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 10)
+uiCorner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Parent = frame
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Text = "Astra - DaHood Script"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+
+-- Minimize, Reappear, and Close Buttons
+local closeButton = Instance.new("TextButton")
+closeButton.Parent = frame
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -40, 0, 10)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+closeButton.Font = Enum.Font.Gotham
+closeButton.TextSize = 14
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Parent = frame
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -80, 0, 10)
+minimizeButton.Text = "_"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(150, 150, 0)
+minimizeButton.Font = Enum.Font.Gotham
+minimizeButton.TextSize = 14
+
+local isMinimized = false
+minimizeButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    for _, child in pairs(frame:GetChildren()) do
+        if child ~= title and child ~= minimizeButton and child ~= closeButton then
+            child.Visible = not isMinimized
+        end
+    end
+    frame.Size = isMinimized and UDim2.new(0, 300, 0, 50) or UDim2.new(0, 300, 0, 450)
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+-- Add Animation to GUI
+local tweenService = game:GetService("TweenService")
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+local initialPosition = frame.Position
+frame.Position = UDim2.new(initialPosition.X.Scale, initialPosition.X.Offset, initialPosition.Y.Scale - 1, initialPosition.Y.Offset)
+tweenService:Create(frame, tweenInfo, {Position = initialPosition}):Play()
+
+-- Create Scrollable Section
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Parent = frame
+scrollingFrame.Size = UDim2.new(1, -20, 1, -70)
+scrollingFrame.Position = UDim2.new(0, 10, 0, 60)
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 2, 0)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.ScrollBarThickness = 5
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.Parent = scrollingFrame
+uiListLayout.Padding = UDim.new(0, 10)
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- Button Creator Function
+local function createToggle(name, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Size = UDim2.new(1, -10, 0, 50)
+    toggleFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    toggleFrame.Parent = scrollingFrame
+
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 10)
+    uiCorner.Parent = toggleFrame
+
+    local label = Instance.new("TextLabel")
+    label.Parent = toggleFrame
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 16
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+
+    local toggle = Instance.new("TextButton")
+    toggle.Parent = toggleFrame
+    toggle.Size = UDim2.new(0.3, 0, 0.6, 0)
+    toggle.Position = UDim2.new(0.65, 0, 0.2, 0)
+    toggle.Text = "OFF"
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    toggle.Font = Enum.Font.Gotham
+    toggle.TextSize = 14
+
+    local uiCornerToggle = Instance.new("UICorner")
+    uiCornerToggle.CornerRadius = UDim.new(0, 10)
+    uiCornerToggle.Parent = toggle
+
+    toggle.MouseButton1Click:Connect(function()
+        if toggle.Text == "OFF" then
+            toggle.Text = "ON"
+            toggle.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        else
+            toggle.Text = "OFF"
+            toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        end
+        callback(toggle.Text == "ON")
+    end)
+end
+
+local function createSlider(name, min, max, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, -10, 0, 50)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    sliderFrame.Parent = scrollingFrame
+
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 10)
+    uiCorner.Parent = sliderFrame
+
+    local label = Instance.new("TextLabel")
+    label.Parent = sliderFrame
+    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 16
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Position = UDim2.new(0.05, 0, 0, 0)
+
+    local sliderInput = Instance.new("TextBox")
+    sliderInput.Parent = sliderFrame
+    sliderInput.Size = UDim2.new(0.4, 0, 0.6, 0)
+    sliderInput.Position = UDim2.new(0.55, 0, 0.2, 0)
+    sliderInput.Text = tostring(min)
+    sliderInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    sliderInput.Font = Enum.Font.Gotham
+    sliderInput.TextSize = 14
+
+    local uiCornerSlider = Instance.new("UICorner")
+    uiCornerSlider.CornerRadius = UDim.new(0, 10)
+    uiCornerSlider.Parent = sliderInput
+
+    sliderInput.FocusLost:Connect(function()
+        local value = tonumber(sliderInput.Text) or min
+        value = math.clamp(value, min, max)
+        sliderInput.Text = tostring(value)
+        callback(value)
+    end)
+end
+
+-- Toggles
+createToggle("Aimbot", function(state)
+    aimbotActive = state
+end)
+
+createToggle("Aim Lock", function(state)
+    aimlockActive = state
+    lockedTarget = nil
+end)
+
+createToggle("Silent Aim", function(state)
+    silentAimActive = state
+end)
+
+createToggle("Anti-Stomp", function(state)
+    antiStompActive = state
+end)
+
+createToggle("Godmode", function(state)
+    godmodeActive = state
+    if godmodeActive then
+        humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+            humanoid.Health = humanoid.MaxHealth
+        end)
+    end
+end)
+
+createToggle("Infinite Stamina", function(state)
+    infiniteStaminaActive = state
+end)
+
+createToggle("ESP", function(state)
+    espActive = state
+    if espActive then
+        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+            if otherPlayer ~= player and otherPlayer.Character and not otherPlayer.Character:FindFirstChild("ESP") then
+                local box = Instance.new("BoxHandleAdornment", otherPlayer.Character)
+                box.Name = "ESP"
+                box.Adornee = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                box.Size = Vector3.new(4, 6, 4)
+                box.ZIndex = 5
+                box.AlwaysOnTop = true
+                box.Color3 = Color3.fromRGB(255, 0, 0)
+                box.Transparency = 0.5
+
+                local tag = Instance.new("BillboardGui", otherPlayer.Character)
+                tag.Name = "PlayerTag"
+                tag.Adornee = otherPlayer.Character:FindFirstChild("Head")
+                tag.Size = UDim2.new(0, 200, 0, 50)
+                tag.StudsOffset = Vector3.new(0, 2, 0)
+                tag.AlwaysOnTop = true
+
+                local textLabel = Instance.new("TextLabel", tag)
+                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                textLabel.BackgroundTransparency = 1
+                textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                textLabel.Font = Enum.Font.Gotham
+                textLabel.TextSize = 14
+                textLabel.Text = otherPlayer.Name
+            end
+        end
+    else
+        for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+            if otherPlayer.Character then
+                if otherPlayer.Character:FindFirstChild("ESP") then
+                    otherPlayer.Character:FindFirstChild("ESP"):Destroy()
+                end
+                if otherPlayer.Character:FindFirstChild("PlayerTag") then
+                    otherPlayer.Character:FindFirstChild("PlayerTag"):Destroy()
+                end
+            end
+        end
+    end
+end)
